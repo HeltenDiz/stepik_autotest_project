@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../../Autotest_Selenium-main/.idea/Autotest_Selenium-main.iml" filepath="$PROJECT_DIR$/../../Autotest_Selenium-main/.idea/Autotest_Selenium-main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../Stepik_auto/.idea/Stepik_auto.iml" filepath="$PROJECT_DIR$/../../Stepik_auto/.idea/Stepik_auto.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/stepik_autotest_project.iml" filepath="$PROJECT_DIR$/.idea/stepik_autotest_project.iml" />
     </modules>
   </component>
