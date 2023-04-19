@@ -8,8 +8,8 @@ from pages.product_selection_page import ProductSelectionPage
 
 @pytest.mark.usefixtures("browser")
 class TestBuyProduct:
-    login_name = ""
-    login_password = ""
+    login_name = "workdiz9@gmail.com"
+    login_password = "test123"
     top_menu = ProductSelectionPage.computer_parts
     submenu = ProductSelectionPage.video_card
     phone_num = "89787425288"
