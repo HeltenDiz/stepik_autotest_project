@@ -49,18 +49,16 @@ def browser(request):
     browser.quit()
 
 
-@pytest.fisture()
-def set_up():
-    print("Start test")
-    base_url = 'https://www.saucedemo.com/'
-    browser.get(base_url)
-    yield
-    print("Finish test")
-
-
 @pytest.fixture(scope="module")
-def set_group():
-    print("Start module")
+def setUpClass(browser):
+    print("Start tests")
     yield
-    print("Exit module")
+    print("Finish tests")
+
+
+@pytest.fixture(scope="function")
+def setUp(browser):
+    print("Start function")
+    yield
+    print("Exit function")
 
