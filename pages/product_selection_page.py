@@ -1,107 +1,103 @@
+import time
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from base.base_class import Base
+from pages.cart_page import CartPage
+from pages.main_page import MainPage
 
 
-class MainPage(Base):
-    base_url = 'https://www.computeruniverse.net/'
-
-    def __init__(self, driver):
-        super().__init__(driver)
-        self.driver = driver
-
-    def get_driver(self):
-        return self.driver
+class ProductSelectionPage(MainPage):
+    base_url = 'https://www.dns-shop.ru/'
 
     # Locators
-    ""
-    login_popup = (By.CLASS_NAME, "[class='c-LoginPopOver__content']")
-    username = (By.ID, "[id='login-form_id']")
-    password = (By.ID, "[id='login-form_password']")
-    button_login = (By.LINK_TEXT, "button.at__login__login")
+    image_file = (By.CSS_SELECTOR, ".ais-Hits-item .ProductListItemRow_imgBox__WUReP img")
+    section_name = (By.CSS_SELECTOR, 'h1.title')
+    filter_panel = (By.CSS_SELECTOR, "[data-role='filters-container']")
+    filter_header_top = (By.CSS_SELECTOR, '.ui-collapse_list')
+    filter_header_sub = (By.CSS_SELECTOR, ".ui-collapse_list .ui-collapse__link-text")
+    close_list_icon = (By.CSS_SELECTOR, ".ui-collapse__icon_down")
 
-    top_panel_menu = (By.CSS_SELECTOR, ".TopMenuPanel_panel__body__HqNJ_")
-    cart_button = (By.TAG_NAME, "button.at__header_cart")
+    input_search = (By.CSS_SELECTOR, ".ui-input-search__input")
+    range_search = (By.CSS_SELECTOR, ".ui-input-small__input")
+    reset_button = (By.XPATH, "//button[@data-role='filters-reset']")
+    apply_filter = (By.CSS_SELECTOR, "[data-role='filters-submit']")
 
-    #link_text lvl 1
-    computers = 'Ноутбуки/ ПК/ планшеты'
-    org_technique = 'Оргтехника и периферия'
-
-    add_product_button = '.inventory_item_description .btn_inventory'
-    # product_description = get_driver().find_elements(By.CSS_SELECTOR, ".inventory_item_description")
-    # inventory_image = get_driver().find_element(By.CSS_SELECTOR, ".inventory_item_img")  # картинка товара
-    # add_to_cart = get_driver().find_elements(By.CSS_SELECTOR,
-    #                                          '.inventory_item_description .btn_inventory')  # кнопка добавить в корзину
-    #
-    # product_title = get_driver().find_element(By.CSS_SELECTOR, ".inventory_item_name")
-    # burger_menu = "//button[@id='react-burger-menu-btn']"
-    # chapters = get_driver().find_elements(By.CSS_SELECTOR, ".bm-item.menu-item")
-    # dropdown = get_driver().find_element(By.CSS_SELECTOR, ".bm-item-list")
+    product_cart = (By.CSS_SELECTOR, "[data-id='product']")
+    add_product_button = (By.CSS_SELECTOR, ".buy-btn")
+    product_price = (By.CSS_SELECTOR, ".product-buy__price")
+    content = (By.CSS_SELECTOR, ".products-list__content")
 
     # Getters
-
-    def get_top_menu_panel(self):
-        return WebDriverWait(self.driver, 30).until(
-            EC.element_to_be_clickable(self.top_panel_menu))
-
-    def get_cart_button(self):
-        return WebDriverWait(self.driver, 30).until(EC.element_to_be_clickable(self.cart_button))
+    def get_product(self, num):
+        product = self.browser.find_elements(*self.product_cart)
+        return product[num]
 
     # Actions
     def select_product(self, num):
-        self.get_add_product_button().is_displayed()
-        self.add_to_cart[num].click()
+        self.action.move_to_element(self.get_product(num)).perform()
+        self.get_product(num).find_element(*self.add_product_button).click()
+        time.sleep(2)
         print("Click product add-button")
 
-    def open_cart(self):
-        self.get_cart_button().click()
-        print("Open cart")
-
-    def click_burger_menu(self):
-        self.get_burger_menu().click()
-        print("Open menu")
+    def read_product_price(self, num):
+        price_element = self.get_product(num).find_element(*self.product_price)
+        price = self.read_title(price_element)
+        price = self.leave_numbers_2(price)
+        return price
 
     # Methods
+    def transition_to_menu_section_and_check(self, top_menu_text, second_menu_text):
+        """open subsection and check load"""
+        self.get_menu_section(top_menu_text, second_menu_text)
+        self.check_open(self.section_name)
+        self.assert_word(word=self.get_clickable_element(self.section_name), result=second_menu_text)
 
-    def select_and_buy_product(self, num):
+    def get_products_to_cart(self, num):
         """select and follow to cart"""
-        self.get_current_url()
-        self.select_product(num)
-        self.open_cart()
+        for i in num:
+            self.select_product(i)
+        MainPage(self.browser).open_cart()
+        assert self.get_current_url() == CartPage(self.browser).base_url
+        assert self.get_len_elements(CartPage(self.browser).cart_item) == len(num)
+    def select_filter(self, reset=True, **kwargs):
+        print("Put Down Filters")
+        if reset:
+            reset_b = self.get_clickable_element(self.reset_button)
+            self.action.move_to_element(reset_b).perform()
+            reset_b.click()
+            time.sleep(3)
+            self.browser.execute_script("window.scrollTo(0, 700);")
+        headers = self.browser.find_elements(*self.filter_header_sub)
+        for key in kwargs.keys():
+            header = self.browser.find_element(By.XPATH, f"//span[text()='{key}']")
+            if header in headers:
+                index = headers.index(header)  # определяем номер фильтра с которым будет работать по вхождению названия фильтра
+                print(index)
+                prod_filter = self.browser.find_elements(*self.filter_header_top)[index]  # находим сам фильтр
+                self.action.move_to_element(prod_filter).perform()
+                if self.is_composite_locator_present(prod_filter, self.close_list_icon[1]):  # проверяем фильтр на развернутость
+                    prod_filter.click()
+                    self.browser.execute_script("window.scrollBy(0, 200)")
+                if type(kwargs.get(key)) == list:
+                    lower_search = prod_filter.find_elements(*self.range_search)[0]
+                    upper_search = prod_filter.find_elements(*self.range_search)[1]
+                    lower_search.send_keys(kwargs.get(key)[0])
+                    upper_search.send_keys(kwargs.get(key)[1])
+                else:
+                    self.browser.execute_script("window.scrollBy(0, 200)")
+                    filter_search = prod_filter.find_element(*self.input_search)  # используем поиск фильтра
+                    filter_search.send_keys(kwargs.get(key))
+                    # checkbox = prod_filter.find_element(By.CSS_SELECTOR, "[data-id="brand"] .ui-checkbox:not([style="display: none;"])")
+                    checkbox = self.browser.find_element(By.XPATH, f"//label/span[contains(text(), '{kwargs.get(key)}')]")
+                    checkbox.click()
+                    # self.browser.execute_script("arguments[0].click();", checkbox)
+        apply_button = self.get_clickable_element(self.apply_filter)
+        self.action.move_to_element(apply_button).perform()
+        print("Apply Filters")
+        apply_button.click()
+        self.check_open(self.content)
+        self.get_clickable_element(self.product_cart)
+        self.action.move_to_element(self.get_product(0)).perform()
 
-    def select_menu_chapter(self, name_chapter, correct_url):
-        """open menu and choose chapter"""
-        self.click_burger_menu()
-        chapter = self.chapters.find_element(By.NAME, name_chapter)
-        chapter.click()
-        self.assert_url(correct_url)
-
-    def select_menu_chapter_2(self, name_chapter, correct_url):
-        list_elements_text = [elements.text for elements in self.dropdown]
-        for element in list_elements_text:
-            if element[0] == name_chapter:
-                self.chapters.find_element(By.NAME, name_chapter).click()
-                break
-            if element[1] == name_chapter:
-                self.chapters.find_element(By.NAME, name_chapter).click()
-                break
-            if element[2] == name_chapter:
-                self.chapters.find_element(By.NAME, name_chapter).click()
-                break
-            if element[3] == name_chapter:
-                self.chapters.find_element(By.NAME, name_chapter).click()
-                break
-        self.assert_url(correct_url)
-
-    def select_menu_chapter_3(self, correct_url, **kwargs):
-        if kwargs.get('All Items'):
-            self.chapters.find_element(By.NAME, kwargs).click()
-        if kwargs.get('About'):
-            self.chapters.find_element(By.NAME, kwargs).click()
-        if kwargs.get('Logout'):
-            self.chapters.find_element(By.NAME, kwargs).click()
-        if kwargs.get('Reset App State'):
-            self.chapters.find_element(By.NAME, kwargs).click()
-        self.assert_url(correct_url)
