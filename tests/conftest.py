@@ -12,7 +12,7 @@ def pytest_addoption(parser):
     parser.addoption('--language', action='store', default='ru')
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="class")
 def browser(request):
     user_language = request.config.getoption("language")
     browser_name = request.config.getoption("browser_name")
@@ -26,13 +26,14 @@ def browser(request):
         options.add_experimental_option("detach", True)  # чтоб не закрывалась страница хром
         options.add_argument("--start-maximized")  # open Browser in maximized mode
 
-        g = Service('C:\\Users\\da.boyarincev\\Downloads\\PyProjects\\resource\\chromedriver.exe')
+        #  g = Service('C:\\Users\\da.boyarincev\\Downloads\\PyProjects\\resource\\chromedriver.exe')
 
         # options.add_argument('--headless')
         # options.add_argument('--no-sandbox')
         # options.add_argument('--disable-dev-shm-usage')
 
-        browser = webdriver.Chrome(options=options, service=g)
+        browser = webdriver.Chrome(options=options)  #service=g
+        browser.implicitly_wait(time_to_wait=10)
         # base_url = 'https://www.saucedemo.com/'
         # browser.get(base_url)
     elif browser_name == "firefox":
@@ -43,22 +44,24 @@ def browser(request):
         browser = webdriver.Firefox(options=options, firefox_profile=profile)
     else:
         raise pytest.UsageError("--browser_name should be chrome or firefox")
-    yield browser
+    request.cls.browser = browser  # объявляем переменную класса - browser, для использования с @pytest.mark.usefixtures("browser")
+    yield browser  # на случай использования browser для scope=function
     time.sleep(2)
     print("\nquit browser..")
     browser.quit()
 
 
-@pytest.fixture(scope="module")
-def setUpClass(browser):
-    print("Start tests")
-    yield
-    print("Finish tests")
 
-
-@pytest.fixture(scope="function")
-def setUp(browser):
-    print("Start function")
-    yield
-    print("Exit function")
+# @pytest.fixture(scope="class")
+# def setup_class():
+#     print("Start tests")
+#     yield browser
+#     print("Finish tests")
+#
+#
+# @pytest.fixture(scope="function")
+# def setUp():
+#     print("Start function")
+#     yield
+#     print("Exit function")
 

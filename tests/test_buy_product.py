@@ -1,57 +1,66 @@
 import pytest
-# from atf.pytest_core.base.case_ui import TestCaseUI
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 
-from stepik_autotest_project_2.pages import CartPage
-from stepik_autotest_project.pages.login_page import LoginPage
+from pages.cart_page import CartPage
+from pages.client_info_page import ClientCheckoutPage
+from pages.login_page import LoginPage
+from pages.product_selection_page import ProductSelectionPage
 
 
-class Test1:  # TestCaseUI
-    login_name = "standard_user"
-    login_password = "secret_sauce"
+@pytest.mark.usefixtures("browser")
+class TestBuyProduct:
+    login_name = "Zuldim@yandex.ru"
+    login_password = "dxvc23847b"
+    top_menu = ProductSelectionPage.computer_parts
+    submenu = ProductSelectionPage.video_card
+    phone_num = "89787425279"
+    mail_name = "game005@gmail.com"
+    method_name = "Самовывоз"
+    pay_method_name = "При получении"
 
-    # @classmethod
-    # def setUpClass(cls):
-    #     """"""
-    #     pass
+    @pytest.fixture(scope="class")
+    def setup_class(self):
+        LoginPage(self.browser).authorization(user_name=self.login_name, user_password=self.login_password)
 
-    @pytest.mark.parametrize("num", (
-            0, #1
+    @pytest.fixture(scope="function")
+    def set_up(self):
+        print("Start function")
+        ProductSelectionPage(self.browser).open_main_page()
+        ProductSelectionPage(self.browser).transition_to_menu_section_and_check(self.top_menu, self.submenu)
+        yield
+        print("Finished Test")
+
+    @pytest.mark.parametrize("kwargs", (
+            ({'num_1': 0, 'num_2': 1,
+              'filter_dict': {'Производитель': 'GIGABYTE', 'Графический процессор': 'GeForce RTX 3060 Ti',
+                              'Цена': ['3000', '70000']}}),
+            ({'num_1': 1, 'num_2': 2,
+              'filter_dict': {'Производитель': 'MSI', 'Графический процессор': 'GeForce RTX 4070 Ti',
+                              'Цена': ['86000', '100000']}})
     ))
-    def test_buy_product(self, set_up, num):
-        options = Options()
-        options.add_experimental_option('excludeSwitches', ['enable-logging']) #для чистки логов от лишнего
-        options.add_experimental_option("detach", True) #чтоб не закрывалась страница хром
-        g = Service('C:\\Users\\da.boyarincev\\Downloads\\PyProjects\\resource\\chromedriver.exe')
-        driver = webdriver.Chrome(options=options, service=g)
+    def test_1_product_choice(self, set_up, setup_class, kwargs):
+        product_p = ProductSelectionPage(self.browser)
+        cart_p = CartPage(self.browser)
+        checkout = ClientCheckoutPage(self.browser)
+        print("Clean cart and filters")
+        product_p.clean_cart()
+        product_p.select_filter(**kwargs['filter_dict'])
 
-        print("Start Test")
+        print("Choose products and compare prices with the basket")
+        price_1 = product_p.read_product_price(num=kwargs['num_1'])
+        price_2 = product_p.read_product_price(num=kwargs['num_2'])
 
-        login = LoginPage(driver)
-        login.authorization(self.login_name, self.login_password)
+        product_p.get_products_to_cart(num=(kwargs['num_1'], kwargs['num_2']))
 
-        # burger_menu = WebDriverWait(driver, 10).until(
-        #             EC.element_to_be_clickable((By.XPATH, "//button[@id='react-burger-menu-btn']")))  # инонка меню
-        # burger_menu.is_displayed()
-        # burger_menu.click()
-        # time.sleep(3)
+        cart_price_1 = cart_p.read_price(cart_p.product_price, num=kwargs['num_1'])
+        cart_price_2 = cart_p.read_price(cart_p.product_price, num=kwargs['num_2'])
 
-        # mp = MainPage(driver)
-        # mp.open_cart()
-        # driver.quit()
-        cp = CartPage(driver)
-        cp.click_checkout()
-        #
-        # cip = ClientInfoPage(driver)
-        # cip.input_information()
-        #
-        # pp = PaymentPage(driver)
-        # pp.payment()
-        #
-        # f = FinishPage(driver)
-        # f.check_finish()
+        assert price_1 == cart_price_1, "price does not match"
+        assert price_2 == cart_price_2, "price does not match"
 
-    # if __name__ == '__main__':
-    #     pytest.main()
+        sum_price = int(cart_price_1) + int(cart_price_2)
+        final_price = cart_p.read_price(cart_p.final_price, num=0)
+        print("Сompare final prices")
+        assert int(sum_price) == int(final_price), "final price does not match"
+
+        cart_p.click_to_order()
+        checkout.fill_information_and_confirm(self.phone_num, self.mail_name, self.method_name, self.pay_method_name)
